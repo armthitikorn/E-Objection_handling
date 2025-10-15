@@ -72,7 +72,7 @@
             margin-bottom: 20px;
             border-radius: 5px;
             text-align: center;
-            display: none; /* ซ่อนไว้ตอนเริ่มต้น */
+            display: none; 
         }
     </style>
 </head>
@@ -127,13 +127,11 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6d3lvdHp6eHljcWZ3ZXJjYWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNTg3MTMsImV4cCI6MjA3MjYzNDcxM30.lgiAf9oBUqsaWGb3u_80wuoKAODQHE_lIBxpGumhrno';
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // ตัวแปรสำหรับเก็บข้อมูลผู้ใช้
         let currentUserId = "anonymous";
         let currentUserEmail = "anonymous@example.com";
         const submitBtn = document.getElementById("submitBtn");
         const messageBox = document.getElementById("messageBox");
 
-        // ฟังก์ชันแสดงข้อความแจ้งเตือน
         function showMessage(text, isError = false) {
             messageBox.textContent = text;
             messageBox.style.display = 'block';
@@ -144,15 +142,14 @@
                 messageBox.style.backgroundColor = '#d4edda';
                 messageBox.style.color = '#155724';
             }
-            // ซ่อนข้อความอัตโนมัติ
             setTimeout(() => {
                 messageBox.style.display = 'none';
             }, 5000);
         }
 
-        // ตรวจสอบ User Auth (เพื่อให้สามารถใช้ user_id/email ที่แท้จริงได้หากมีการ login)
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                // พยายามดึงข้อมูล User หากมีการ Login 
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     currentUserId = user.id;
@@ -163,63 +160,49 @@
             }
         });
 
-        // --- Event Listener: Submit Form ---
         document.getElementById("subjectiveForm").addEventListener("submit", async function(event) {
             event.preventDefault();
 
-            // ปิดปุ่มเพื่อป้องกันการส่งซ้ำ
             submitBtn.disabled = true;
             submitBtn.textContent = "กำลังส่งข้อมูล...";
 
-            // 1. ดึงข้อมูลทั้งหมด
             const name = document.getElementById("name").value.trim();
-            if (!name) {
-                showMessage("กรุณาระบุชื่อผู้ทำแบบทดสอบ", true);
-                submitBtn.disabled = false;
-                submitBtn.textContent = "ส่งคำตอบ";
-                return;
-            }
             
             const answers = {};
             for (let i = 1; i <= 10; i++) {
-                // เก็บคำตอบทั้งหมดเป็น Object
                 answers[`q${i}`] = document.getElementById(`q${i}`).value.trim();
             }
 
-            // 2. จัดโครงสร้างข้อมูลสำหรับ Supabase Insert
             const dataToInsert = {
-                // ข้อมูลหลักที่ต้องการ
-                name: name,             // <<< ชื่อผู้ทำแบบทดสอบ (เพื่อให้ปรากฏใน Dashboard)
-                answers: answers,       // คำตอบอัตนัยทั้งหมด (ต้องเป็น jsonb ใน Supabase)
+                // 1. ข้อมูลสำคัญ: ชื่อผู้ทำแบบทดสอบ
+                name: name,             
                 
-                // ข้อมูลอ้างอิง
+                // 2. คำตอบอัตนัย
+                answers: answers,       
+                
+                // 3. ข้อมูลอ้างอิงผู้ใช้
                 user_id: currentUserId,
                 user_email: currentUserEmail,
                 
-                // **สำคัญ:** หากตาราง subjective_answers มีคอลัมน์ user_text
-                // และคอลัมน์นั้นเป็น NOT NULL ต้องส่งค่าเข้าไป
-                // ถ้าเป็น Nullable ให้ส่ง null
+                // 4. จัดการคอลัมน์ user_text เพื่อหลีกเลี่ยง NOT NULL error
                 user_text: null, 
-                // id และ created_at ให้ Supabase จัดการเองด้วย Default Value
             };
 
-            // 3. ส่งข้อมูลเข้า Supabase
             const { error } = await supabase
-                .from('subjective_answers') // ต้องเป็นชื่อ Table นี้
+                .from('subjective_answers') 
                 .insert([dataToInsert]);
 
-            // 4. จัดการผลลัพธ์
             if (error) {
                 console.error("Error saving answers:", error);
+                // แสดงข้อความ Error ที่ละเอียดขึ้น
                 showMessage(`เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${error.message}. กรุณาตรวจสอบ Console`, true);
                 submitBtn.disabled = false;
                 submitBtn.textContent = "ส่งคำตอบ";
             } else {
                 showMessage(`ส่งคำตอบเรียบร้อยแล้ว, ผู้ทำแบบทดสอบ: ${name}`, false);
                 
-                // หน่วงเวลาเล็กน้อยก่อนไปหน้าถัดไป
                 setTimeout(() => {
-                    window.location.href = "index4.html"; // เปลี่ยนเป็นชื่อหน้าถัดไปที่ต้องการ
+                    window.location.href = "index4.html";
                 }, 1500);
             }
         });
