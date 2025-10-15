@@ -18,17 +18,14 @@
       max-width: 800px;
       width: 100%;
       background-color: #fff;
-      padding: 30px;
+      padding: 40px;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     h2 {
       text-align: center;
       color: #007acc;
       margin-bottom: 30px;
-    }
-    .form-group {
-      margin-bottom: 20px;
     }
     label {
       font-weight: bold;
@@ -38,9 +35,10 @@
     input[type="text"], textarea {
       width: 100%;
       padding: 12px;
-      font-size: 1rem;
+      margin-bottom: 20px;
       border: 1px solid #ccc;
       border-radius: 6px;
+      font-size: 1rem;
       box-sizing: border-box;
     }
     textarea {
@@ -70,11 +68,39 @@
   <div class="container">
     <h2>แบบทดสอบอัตนัย: ความกังวลของลูกค้า</h2>
     <form id="subjectiveForm">
-      <div class="form-group">
-        <label for="name">ชื่อผู้ทำแบบทดสอบ:</label>
-        <input type="text" id="name" name="name" required />
-      </div>
-      <div id="questions"></div>
+      <label for="name">ชื่อผู้ทำแบบทดสอบ:</label>
+      <input type="text" id="name" name="name" required />
+
+      <label for="q1">1. ลูกค้ามีความกังวลเรื่องใดมากที่สุด?</label>
+      <textarea id="q1" name="q1" required></textarea>
+
+      <label for="q2">2. ลูกค้าต้องการข้อมูลเพิ่มเติมเกี่ยวกับอะไร?</label>
+      <textarea id="q2" name="q2" required></textarea>
+
+      <label for="q3">3. ลูกค้ามีข้อสงสัยเกี่ยวกับขั้นตอนการสมัครหรือไม่?</label>
+      <textarea id="q3" name="q3" required></textarea>
+
+      <label for="q4">4. ลูกค้ากังวลเกี่ยวกับค่าใช้จ่ายหรือผลประโยชน์หรือไม่?</label>
+      <textarea id="q4" name="q4" required></textarea>
+
+      <label for="q5">5. ลูกค้าต้องการความช่วยเหลือในด้านใด?</label>
+      <textarea id="q5" name="q5" required></textarea>
+
+      <label for="q6">6. ลูกค้ามีประสบการณ์ไม่ดีในอดีตเกี่ยวกับบริการหรือไม่?</label>
+      <textarea id="q6" name="q6" required></textarea>
+
+      <label for="q7">7. ลูกค้าต้องการให้ปรับปรุงอะไรในบริการ?</label>
+      <textarea id="q7" name="q7" required></textarea>
+
+      <label for="q8">8. ลูกค้ามีความคาดหวังอย่างไรจากการใช้บริการ?</label>
+      <textarea id="q8" name="q8" required></textarea>
+
+      <label for="q9">9. ลูกค้ามีข้อเสนอแนะเพิ่มเติมหรือไม่?</label>
+      <textarea id="q9" name="q9" required></textarea>
+
+      <label for="q10">10. ลูกค้ารู้สึกอย่างไรกับการให้บริการในปัจจุบัน?</label>
+      <textarea id="q10" name="q10" required></textarea>
+
       <button type="submit">ส่งคำตอบ</button>
     </form>
   </div>
@@ -86,47 +112,29 @@
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6d3lvdHp6eHljcWZ3ZXJjYWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNTg3MTMsImV4cCI6MjA3MjYzNDcxM30.lgiAf9oBUqsaWGb3u_80wuoKAODQHE_lIBxpGumhrno';
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const questions = [
-      "1. ลูกค้ากังวลเรื่องค่ารักษาพยาบาลสูง คุณจะอธิบายความคุ้มครองอย่างไร?",
-      "2. ลูกค้าสงสัยว่าประกันสุขภาพคุ้มครองอะไรบ้าง คุณจะตอบอย่างไร?",
-      "3. ลูกค้ากังวลว่าจะเคลมไม่ได้ คุณจะสร้างความมั่นใจอย่างไร?",
-      "4. ลูกค้าบอกว่าไม่มีเวลาอ่านเงื่อนไข คุณจะอธิบายให้เข้าใจง่ายอย่างไร?",
-      "5. ลูกค้ากังวลเรื่องโรคประจำตัว คุณจะนำเสนอแผนประกันอย่างไร?",
-      "6. ลูกค้าบอกว่าไม่เคยทำประกันมาก่อน คุณจะอธิบายอย่างไร?",
-      "7. ลูกค้ากังวลเรื่องเบี้ยระยะยาว คุณจะเสนอทางเลือกใด?",
-      "8. ลูกค้าบอกว่าเคยมีประสบการณ์ไม่ดีจากบริษัทประกัน คุณจะรับมืออย่างไร?",
-      "9. ลูกค้ากังวลว่าจะไม่คุ้มค่า คุณจะอธิบายประโยชน์อย่างไร?",
-      "10. ลูกค้าบอกว่า “ยังไม่พร้อมตัดสินใจ” คุณจะปิดการขายอย่างไร?"
-    ];
-
-    const questionsDiv = document.getElementById("questions");
-    questions.forEach((q, i) => {
-      const div = document.createElement("div");
-      div.className = "form-group";
-      div.innerHTML = `
-        <label for="q${i+1}">${q}</label>
-        <textarea id="q${i+1}" name="q${i+1}" required></textarea>
-      `;
-      questionsDiv.appendChild(div);
-    });
-
     document.getElementById("subjectiveForm").addEventListener("submit", async function(event) {
       event.preventDefault();
+
       const name = document.getElementById("name").value;
       const answers = {};
       for (let i = 1; i <= 10; i++) {
-        answers["q"+i] = document.getElementById("q"+i).value;
+        answers[`q${i}`] = document.getElementById(`q${i}`).value;
       }
 
       const { error } = await supabase
-        .from("subjective_answers")
-        .insert([{ user_id: "anonymous", user_email: "anonymous@example.com", name: name, answers: answers }]);
+        .from('subjective_answers')
+        .insert([{
+          user_id: "anonymous",
+          user_email: "anonymous@example.com",
+          name: name,
+          answers: answers
+        }]);
 
       if (error) {
         console.error("Error saving answers:", error);
-        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง");
       } else {
-        alert("ส่งคำตอบเรียบร้อยแล้ว!");
+        alert("ส่งคำตอบเรียบร้อยแล้ว ขอบคุณสำหรับการทำแบบทดสอบ!");
         window.location.href = "index4.html";
       }
     });
