@@ -6,7 +6,7 @@
     <title>แบบทดสอบอัตนัย - ความกังวลของลูกค้า</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* CSS สไตล์เดิมจากโค้ดของคุณ */
+        /* CSS สไตล์เดิม */
         body {
             font-family: 'Sarabun', sans-serif;
             background-color: #f0f2f5;
@@ -119,34 +119,95 @@
         </form>
     </div>
 
-   <script type="module">
-    // ... โค้ด setup เดิม ...
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-    document.getElementById("subjectiveForm").addEventListener("submit", async function(event) {
-        event.preventDefault();
+        // --- Supabase Setup ---
+        const supabaseUrl = 'https://wzwyotzzxycqfwercakh.supabase.co';
+        // ใช้ Key เดียวกันกับที่คุณใช้ในโค้ดก่อนหน้า
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6d3lvdHp6eHljcWZ3ZXJjYWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNTg3MTMsImV4cCI6MjA3MjYzNDcxM30.lgiAf9oBUqsaWGb3u_80wuoKAODQHE_lIBxpGumhrno';
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // ... โค้ดดึงค่า name และ answers ...
-        
-        const dataToInsert = {
-            // 1. ข้อมูลสำคัญ: ชื่อผู้ทำแบบทดสอบ
-            name: name,             
-            
-            // 2. คำตอบอัตนัย
-            answers: answers,       
-            
-            // 3. ข้อมูลอ้างอิงผู้ใช้
-            user_id: currentUserId,   // เป็น text, รับ "anonymous" ได้
-            user_email: currentUserEmail, // ตรวจสอบว่าคอลัมน์นี้เป็น Nullable หรือไม่
-            
-            // **user_text ถูกลบออกไปแล้ว**
-        };
+        let currentUserId = "anonymous";
+        let currentUserEmail = "anonymous@example.com";
+        const submitBtn = document.getElementById("submitBtn");
+        const messageBox = document.getElementById("messageBox");
 
-        const { error } = await supabase
-            .from('subjective_answers') 
-            .insert([dataToInsert]);
-        
-        // ... โค้ดจัดการ Error ...
-    });
-</script>
+        function showMessage(text, isError = false) {
+            messageBox.textContent = text;
+            messageBox.style.display = 'block';
+            if (isError) {
+                messageBox.style.backgroundColor = '#f8d7da';
+                messageBox.style.color = '#721c24';
+            } else {
+                messageBox.style.backgroundColor = '#d4edda';
+                messageBox.style.color = '#155724';
+            }
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // พยายามดึงข้อมูล User
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    currentUserId = user.id;
+                    currentUserEmail = user.email || "user_email_not_available@supabase.com";
+                }
+            } catch (e) {
+                console.warn("Auth check failed, using anonymous data.", e);
+            }
+        });
+
+        document.getElementById("subjectiveForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "กำลังส่งข้อมูล...";
+
+            const name = document.getElementById("name").value.trim();
+            
+            // แก้ไขปัญหา 'answers is not defined' แล้ว
+            const answers = {}; 
+            
+            for (let i = 1; i <= 10; i++) {
+                answers[`q${i}`] = document.getElementById(`q${i}`).value.trim();
+            }
+
+            const dataToInsert = {
+                // 1. ข้อมูลสำคัญ: ชื่อผู้ทำแบบทดสอบ (คอลัมน์นี้มีอยู่ในตารางแล้ว)
+                name: name,             
+                
+                // 2. คำตอบอัตนัย (คอลัมน์นี้เป็น JSONB ในตารางแล้ว)
+                answers: answers,       
+                
+                // 3. ข้อมูลอ้างอิงผู้ใช้ (คอลัมน์ user_id เป็น text แล้ว)
+                user_id: currentUserId,
+                user_email: currentUserEmail,
+                
+                // **ไม่ส่ง user_text เพื่อหลีกเลี่ยง Error PGRST204**
+            };
+
+            const { error } = await supabase
+                .from('subjective_answers') 
+                .insert([dataToInsert]);
+
+            if (error) {
+                console.error("Error saving answers:", error);
+                showMessage(`เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${error.message}. กรุณาตรวจสอบ RLS/Data Type`, true);
+                submitBtn.disabled = false;
+                submitBtn.textContent = "ส่งคำตอบ";
+            } else {
+                showMessage(`ส่งคำตอบเรียบร้อยแล้ว, ผู้ทำแบบทดสอบ: ${name}`, false);
+                
+                // นำทางไปยังหน้าถัดไปเมื่อสำเร็จ
+                setTimeout(() => {
+                    window.location.href = "index4.html";
+                }, 1500);
+            }
+        });
+    </script>
 </body>
 </html>
