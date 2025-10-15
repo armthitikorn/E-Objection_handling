@@ -6,6 +6,7 @@
     <title>แบบทดสอบอัตนัย - ความกังวลของลูกค้า</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        /* CSS สไตล์เดิมจากโค้ดของคุณ */
         body {
             font-family: 'Sarabun', sans-serif;
             background-color: #f0f2f5;
@@ -63,15 +64,22 @@
         button:hover {
             background-color: #005fa3;
         }
+        .message-box {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+            display: none; /* ซ่อนไว้ตอนเริ่มต้น */
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>แบบทดสอบอัตนัย: ความกังวลของลูกค้า</h2>
-        <p>
-            <label for="userEmailDisplay">อีเมลผู้ใช้งาน (อ้างอิง):</label>
-            <input type="text" id="userEmailDisplay" value="กำลังตรวจสอบ..." disabled />
-        </p>
+        <div id="messageBox" class="message-box"></div>
 
         <form id="subjectiveForm">
             <label for="name">ชื่อผู้ทำแบบทดสอบ:</label>
@@ -114,82 +122,105 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-        // Supabase Configuration
+        // --- Supabase Setup ---
         const supabaseUrl = 'https://wzwyotzzxycqfwercakh.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6d3lvdHp6eHljcWZ3ZXJjYWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNTg3MTMsImV4cCI6MjA3MjYzNDcxM30.lgiAf9oBUqsaWGb3u_80wuoKAODQHE_lIBxpGumhrno';
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // ตัวแปรสำหรับเก็บข้อมูลผู้ใช้ (ถ้ามีการเข้าสู่ระบบ)
+        // ตัวแปรสำหรับเก็บข้อมูลผู้ใช้
         let currentUserId = "anonymous";
         let currentUserEmail = "anonymous@example.com";
+        const submitBtn = document.getElementById("submitBtn");
+        const messageBox = document.getElementById("messageBox");
 
-        // ตรวจสอบสถานะการเข้าสู่ระบบเมื่อโหลดหน้า
-        document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            const emailDisplay = document.getElementById("userEmailDisplay");
-
-            if (session) {
-                currentUserId = session.user.id;
-                currentUserEmail = session.user.email || "N/A";
-                emailDisplay.value = currentUserEmail;
+        // ฟังก์ชันแสดงข้อความแจ้งเตือน
+        function showMessage(text, isError = false) {
+            messageBox.textContent = text;
+            messageBox.style.display = 'block';
+            if (isError) {
+                messageBox.style.backgroundColor = '#f8d7da';
+                messageBox.style.color = '#721c24';
             } else {
-                emailDisplay.value = "(ไม่ได้เข้าสู่ระบบ - ข้อมูลจะถูกบันทึกเป็น Anonymous)";
+                messageBox.style.backgroundColor = '#d4edda';
+                messageBox.style.color = '#155724';
+            }
+            // ซ่อนข้อความอัตโนมัติ
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+
+        // ตรวจสอบ User Auth (เพื่อให้สามารถใช้ user_id/email ที่แท้จริงได้หากมีการ login)
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    currentUserId = user.id;
+                    currentUserEmail = user.email || "user_email_not_available@supabase.com";
+                }
+            } catch (e) {
+                console.warn("Auth check failed, using anonymous data.", e);
             }
         });
 
+        // --- Event Listener: Submit Form ---
         document.getElementById("subjectiveForm").addEventListener("submit", async function(event) {
             event.preventDefault();
 
             // ปิดปุ่มเพื่อป้องกันการส่งซ้ำ
-            const submitBtn = document.getElementById("submitBtn");
             submitBtn.disabled = true;
             submitBtn.textContent = "กำลังส่งข้อมูล...";
 
+            // 1. ดึงข้อมูลทั้งหมด
             const name = document.getElementById("name").value.trim();
+            if (!name) {
+                showMessage("กรุณาระบุชื่อผู้ทำแบบทดสอบ", true);
+                submitBtn.disabled = false;
+                submitBtn.textContent = "ส่งคำตอบ";
+                return;
+            }
+            
             const answers = {};
             for (let i = 1; i <= 10; i++) {
-                // ใช้ .trim() เพื่อลบช่องว่างหัวท้าย
-                answers[`q${i}`] = document.getElementById(`q${i}`).value.trim(); 
+                // เก็บคำตอบทั้งหมดเป็น Object
+                answers[`q${i}`] = document.getElementById(`q${i}`).value.trim();
             }
 
-            // รวบรวมข้อมูลสำหรับส่งเข้า Supabase
+            // 2. จัดโครงสร้างข้อมูลสำหรับ Supabase Insert
             const dataToInsert = {
-                // **1. ข้อมูลสำคัญตามที่คุณต้องการ**
-                name: name,             // ชื่อผู้ทำแบบทดสอบ (เพื่อให้ปรากฏใน Dashboard)
-
-                // **2. ข้อมูลการอ้างอิงผู้ใช้**
+                // ข้อมูลหลักที่ต้องการ
+                name: name,             // <<< ชื่อผู้ทำแบบทดสอบ (เพื่อให้ปรากฏใน Dashboard)
+                answers: answers,       // คำตอบอัตนัยทั้งหมด (ต้องเป็น jsonb ใน Supabase)
+                
+                // ข้อมูลอ้างอิง
                 user_id: currentUserId,
                 user_email: currentUserEmail,
-
-                // **3. คำตอบ (JSONB)**
-                answers: answers,       
-
-                // **4. คอลัมน์เพิ่มเติม (สำคัญ: เพื่อหลีกเลี่ยง NOT NULL Error)**
-                // อ้างอิงจากตารางที่คุณแชร์มา:
-                user_text: null,       // กำหนดให้เป็น NULL เพื่อให้ Insert สำเร็จ
-                // id และ created_at จะถูกสร้างโดย Supabase โดยอัตโนมัติ
-
-                // เพิ่ม timestamp ในฝั่ง client ด้วย (หากตารางไม่มี default value)
-                // created_at: new Date().toISOString()
+                
+                // **สำคัญ:** หากตาราง subjective_answers มีคอลัมน์ user_text
+                // และคอลัมน์นั้นเป็น NOT NULL ต้องส่งค่าเข้าไป
+                // ถ้าเป็น Nullable ให้ส่ง null
+                user_text: null, 
+                // id และ created_at ให้ Supabase จัดการเองด้วย Default Value
             };
 
-            // ---- การส่งข้อมูลเข้า Supabase ----
-            const { data, error } = await supabase
-                .from('subjective_answers') // ต้องเป็นชื่อ Table ที่ถูกต้อง: subjective_answers
-                .insert([dataToInsert])
-                .select(); // ใช้ .select() เพื่อให้ Supabase ส่งข้อมูลที่ Insert สำเร็จกลับมา
+            // 3. ส่งข้อมูลเข้า Supabase
+            const { error } = await supabase
+                .from('subjective_answers') // ต้องเป็นชื่อ Table นี้
+                .insert([dataToInsert]);
 
+            // 4. จัดการผลลัพธ์
             if (error) {
                 console.error("Error saving answers:", error);
-                alert(`เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${error.message}`);
+                showMessage(`เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${error.message}. กรุณาตรวจสอบ Console`, true);
                 submitBtn.disabled = false;
                 submitBtn.textContent = "ส่งคำตอบ";
             } else {
-                // หากสำเร็จ
-                console.log("Insert Successful. Data:", data);
-                alert("ส่งคำตอบเรียบร้อยแล้ว ขอบคุณสำหรับการทำแบบทดสอบ!");
-                // นำทางไปยังหน้าต่อไป
-                window.location.href = "index4.html"; 
+                showMessage(`ส่งคำตอบเรียบร้อยแล้ว, ผู้ทำแบบทดสอบ: ${name}`, false);
+                
+                // หน่วงเวลาเล็กน้อยก่อนไปหน้าถัดไป
+                setTimeout(() => {
+                    window.location.href = "index4.html"; // เปลี่ยนเป็นชื่อหน้าถัดไปที่ต้องการ
+                }, 1500);
             }
         });
     </script>
